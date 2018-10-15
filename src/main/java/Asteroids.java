@@ -8,13 +8,18 @@ import javafx.scene.layout.Pane;
 import javafx.scene.paint.Color;
 import javafx.scene.shape.Circle;
 import javafx.scene.shape.Rectangle;
+import javafx.scene.text.Font;
+import javafx.scene.text.Text;
 import javafx.stage.Stage;
 
 import java.util.ArrayList;
 import java.util.List;
 
 public class Asteroids extends Application {
-
+    private int killCounter = 0;
+    private Text killDisplay = new Text("Enemies Killed: " + killCounter);
+    private boolean isLeftPressed = false;
+    private boolean isRightPressed = false;
     private Pane root;
     private List<GameObject> bullets = new ArrayList<>();
     private List<GameObject> enemies = new ArrayList<>();
@@ -24,11 +29,9 @@ public class Asteroids extends Application {
     private Parent createContent(){
         root = new Pane();
         root.setPrefSize(600, 600);
-
         player = new Player();
         player.setVelocity(new Point2D(1,0));
         addGameObject(player, 300, 300);
-
         AnimationTimer timer = new AnimationTimer() {
             @Override
             public void handle(long l) {
@@ -37,7 +40,15 @@ public class Asteroids extends Application {
         };
         timer.start();
 
+        killCounter();
+
         return root;
+    }
+
+    private void killCounter(){
+        killDisplay.setFont(Font.font(25));
+        killDisplay.setY(20);
+        root.getChildren().add(killDisplay);
     }
 
     private void addBullet(GameObject bullet, double x, double y){
@@ -58,14 +69,28 @@ public class Asteroids extends Application {
     }
 
     private void onUpdate(){
+        if(isLeftPressed){
+            player.rotateLeft();
+        }else if(isRightPressed){
+            player.rotateRight();
+        }
+
+        killDisplay.setText("Enemies Killed: " + killCounter);
+
         for(GameObject bullet : bullets){
             for(GameObject enemy : enemies){
                 if(bullet.isColliding(enemy)){
+                    killCounter++;
                     bullet.setAlive(false);
                     enemy.setAlive(false);
-
                     root.getChildren().removeAll(bullet.getView(), enemy.getView());
                 }
+            }
+        }
+        for(GameObject enemy : enemies){
+        if(player.isColliding(enemy)) {
+            player.setAlive(false);
+            root.getChildren().remove(player.getView());
             }
         }
         bullets.removeIf(GameObject::isDead);
@@ -76,7 +101,7 @@ public class Asteroids extends Application {
 
         player.update();
 
-        if(Math.random() < 0.02){
+        if(Math.random() < .02 && !(player.isDead())){
             addEnemy(new Enemy(), Math.random() * root.getPrefWidth(), Math.random() * root.getPrefHeight());
         }
     }
@@ -99,18 +124,25 @@ public class Asteroids extends Application {
 
 
     @Override
-    public void start(Stage stage) throws Exception {
+    public void start(Stage stage) {
         stage.setScene(new Scene(createContent()));
         stage.getScene().setOnKeyPressed(e -> {
-            if(e.getCode() == KeyCode.LEFT){
-                player.rotateLeft();
-            }else if(e.getCode() == KeyCode.RIGHT){
-                player.rotateRight();
-            }else if(e.getCode() == KeyCode.SPACE){
+            if(e.getCode() == KeyCode.LEFT && !(player.isDead()))
+                isLeftPressed = true;
+            if(e.getCode() == KeyCode.RIGHT && !(player.isDead()))
+                isRightPressed = true;
+            if(e.getCode() == KeyCode.SPACE && !(player.isDead())){
                 Bullet bullet = new Bullet();
                 bullet.setVelocity(player.getVelocity().normalize().multiply(5));
                 addBullet(bullet, player.getView().getTranslateX(), player.getView().getTranslateY());
             }
+        });
+
+        stage.getScene().setOnKeyReleased(e -> {
+            if(e.getCode() == KeyCode.LEFT)
+                isLeftPressed = false;
+            if(e.getCode() == KeyCode.RIGHT)
+                isRightPressed = false;
         });
         stage.show();
     }
